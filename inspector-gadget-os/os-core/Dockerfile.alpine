@@ -1,0 +1,66 @@
+# Inspector Gadget OS - Alpine Linux Base
+FROM alpine:3.20
+
+# Install base system packages
+RUN apk add --no-cache \
+    bash \
+    coreutils \
+    util-linux \
+    e2fsprogs \
+    parted \
+    grub \
+    grub-efi \
+    mkinitfs \
+    linux-firmware \
+    linux-lts \
+    openrc \
+    # Networking
+    dhcpcd \
+    iptables \
+    iproute2 \
+    # Container runtime
+    containerd \
+    runc \
+    # Build tools
+    build-base \
+    go \
+    git \
+    # GPU support preparation
+    pciutils \
+    mesa-dri-gallium \
+    # System management
+    sudo \
+    shadow \
+    dbus \
+    eudev
+
+# Configure system
+RUN rc-update add devfs sysinit && \
+    rc-update add dmesg sysinit && \
+    rc-update add mdev sysinit && \
+    rc-update add hwclock boot && \
+    rc-update add modules boot && \
+    rc-update add sysctl boot && \
+    rc-update add hostname boot && \
+    rc-update add bootmisc boot && \
+    rc-update add syslog boot && \
+    rc-update add networking boot && \
+    rc-update add dhcpcd default && \
+    rc-update add containerd default
+
+# Create Inspector Gadget directories
+RUN mkdir -p /opt/inspector-gadget/{bin,lib,gadgets,config} && \
+    mkdir -p /var/lib/inspector-gadget/{models,data} && \
+    mkdir -p /etc/inspector-gadget
+
+# Add gadget manager placeholder
+COPY scripts/gadget-manager.sh /opt/inspector-gadget/bin/
+RUN chmod +x /opt/inspector-gadget/bin/gadget-manager.sh
+
+# Set up immutable root filesystem structure
+RUN mkdir -p /sysroot/{etc,var,home,opt} && \
+    mkdir -p /sysroot/var/{lib,log,tmp}
+
+# Entry point for building
+WORKDIR /build
+CMD ["/bin/bash"]
