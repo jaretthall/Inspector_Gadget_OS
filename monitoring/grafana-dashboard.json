@@ -1,0 +1,291 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Inspector Gadget OS - System Overview",
+    "tags": ["inspector-gadget-os", "monitoring", "security"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "System Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"inspector-gadget-os\"}",
+            "legendFormat": "System Status"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{job=\"inspector-gadget-os\"}[5m])",
+            "legendFormat": "Requests/sec"
+          }
+        ],
+        "yAxes": [
+          {"label": "Requests/sec", "min": 0}
+        ],
+        "gridPos": {"h": 8, "w": 9, "x": 6, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Response Times",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{job=\"inspector-gadget-os\"}[5m]))",
+            "legendFormat": "50th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"inspector-gadget-os\"}[5m]))",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job=\"inspector-gadget-os\"}[5m]))",
+            "legendFormat": "99th percentile"
+          }
+        ],
+        "yAxes": [
+          {"label": "Seconds", "min": 0}
+        ],
+        "gridPos": {"h": 8, "w": 9, "x": 15, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{job=\"inspector-gadget-os\",code!~\"2..\"}[5m]) / rate(http_requests_total{job=\"inspector-gadget-os\"}[5m]) * 100",
+            "legendFormat": "Error Rate %"
+          }
+        ],
+        "yAxes": [
+          {"label": "Error Rate %", "min": 0}
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "query": {"queryType": "", "refId": "A"},
+              "reducer": {"params": [], "type": "last"},
+              "evaluator": {"params": [5], "type": "gt"}
+            }
+          ],
+          "executionErrorState": "alerting",
+          "for": "5m",
+          "frequency": "10s",
+          "handler": 1,
+          "name": "High Error Rate Alert",
+          "noDataState": "no_data",
+          "notifications": []
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Authentication Failures",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(auth_failures_total{job=\"inspector-gadget-os\"}[5m])",
+            "legendFormat": "Auth Failures/sec"
+          }
+        ],
+        "yAxes": [
+          {"label": "Failures/sec", "min": 0}
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "query": {"queryType": "", "refId": "A"},
+              "reducer": {"params": [], "type": "last"},
+              "evaluator": {"params": [0.1], "type": "gt"}
+            }
+          ],
+          "executionErrorState": "alerting",
+          "for": "2m",
+          "frequency": "10s",
+          "handler": 1,
+          "name": "Authentication Failure Alert",
+          "noDataState": "no_data",
+          "notifications": []
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "Active Users",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "active_users{job=\"inspector-gadget-os\"}",
+            "legendFormat": "Active Users"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "Gadget Executions",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(gadget_executions_total{job=\"inspector-gadget-os\"}[5m])",
+            "legendFormat": "{{gadget_name}}"
+          }
+        ],
+        "yAxes": [
+          {"label": "Executions/sec", "min": 0}
+        ],
+        "gridPos": {"h": 8, "w": 9, "x": 6, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "File Operations",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(safefs_operations_total{job=\"inspector-gadget-os\"}[5m])",
+            "legendFormat": "{{operation}}"
+          }
+        ],
+        "yAxes": [
+          {"label": "Operations/sec", "min": 0}
+        ],
+        "gridPos": {"h": 8, "w": 9, "x": 15, "y": 16}
+      },
+      {
+        "id": 9,
+        "title": "System Resources",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes{job=\"inspector-gadget-os\"}",
+            "legendFormat": "Memory Usage"
+          },
+          {
+            "expr": "rate(process_cpu_seconds_total{job=\"inspector-gadget-os\"}[5m]) * 100",
+            "legendFormat": "CPU Usage %"
+          }
+        ],
+        "yAxes": [
+          {"label": "Memory (bytes) / CPU %", "min": 0}
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
+      },
+      {
+        "id": 10,
+        "title": "Security Events",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "{job=\"inspector-gadget-os\"} |= \"level\":\"error\" | json | component=\"auth\" or component=\"rbac\" or component=\"safefs\"",
+            "legendFormat": ""
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": true,
+          "enableLogDetails": true
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}
+      },
+      {
+        "id": 11,
+        "title": "Request Distribution by Endpoint",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum by (path) (rate(http_requests_total{job=\"inspector-gadget-os\"}[5m]))",
+            "legendFormat": "{{path}}"
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32}
+      },
+      {
+        "id": 12,
+        "title": "RBAC Permission Denials",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "sum by (user_id, resource, action) (rate(rbac_denials_total{job=\"inspector-gadget-os\"}[5m]))",
+            "legendFormat": "",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {"Time": true, "__name__": true, "job": true, "instance": true},
+              "renameByName": {
+                "user_id": "User ID",
+                "resource": "Resource",
+                "action": "Action",
+                "Value": "Denials/sec"
+              }
+            }
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s",
+    "schemaVersion": 27,
+    "version": 1,
+    "links": [
+      {
+        "title": "Inspector Gadget OS Documentation",
+        "url": "https://docs.inspector-gadget-os.dev",
+        "type": "link",
+        "icon": "doc"
+      },
+      {
+        "title": "Log Analysis Tool",
+        "url": "/logs",
+        "type": "link",
+        "icon": "bolt"
+      }
+    ]
+  }
+}

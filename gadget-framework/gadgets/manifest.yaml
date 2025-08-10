@@ -1,0 +1,6 @@
+gadgets:
+  - name: echo
+    description: Echoes provided arguments back to the console
+  - name: sysinfo
+    description: Prints basic system information
+

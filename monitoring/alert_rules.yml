@@ -1,0 +1,296 @@
+# Prometheus alerting rules for Inspector Gadget OS
+groups:
+  - name: inspector_gadget_os.rules
+    rules:
+      # System health alerts
+      - alert: InspectorGadgetOSDown
+        expr: up{job="inspector-gadget-os"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Inspector Gadget OS is down"
+          description: "Inspector Gadget OS has been down for more than 30 seconds"
+
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{job="inspector-gadget-os",code!~"2.."}[5m]) /
+            rate(http_requests_total{job="inspector-gadget-os"}[5m])
+          ) * 100 > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }}% over the last 5 minutes"
+
+      - alert: HighResponseTime
+        expr: |
+          histogram_quantile(0.95, 
+            rate(http_request_duration_seconds_bucket{job="inspector-gadget-os"}[5m])
+          ) > 5
+        for: 2m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High response times detected"
+          description: "95th percentile response time is {{ $value }}s"
+
+  - name: authentication.rules
+    rules:
+      # Authentication security alerts
+      - alert: AuthenticationFailureSpike
+        expr: rate(auth_failures_total{job="inspector-gadget-os"}[5m]) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          component: auth
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Authentication failures: {{ $value }} failures/second over the last 5 minutes"
+
+      - alert: SuspiciousLoginActivity
+        expr: |
+          rate(auth_failures_total{job="inspector-gadget-os"}[1m]) > 2 and
+          rate(auth_failures_total{job="inspector-gadget-os"}[5m]) > 1
+        for: 1m
+        labels:
+          severity: critical
+          component: auth
+        annotations:
+          summary: "Suspicious login activity detected"
+          description: "Rapid authentication failures detected - possible brute force attack"
+
+      - alert: JWTTokenValidationErrors
+        expr: rate(jwt_validation_errors_total{job="inspector-gadget-os"}[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+          component: auth
+        annotations:
+          summary: "JWT token validation errors"
+          description: "JWT validation errors: {{ $value }} errors/second"
+
+  - name: authorization.rules
+    rules:
+      # RBAC and authorization alerts
+      - alert: HighRBACDenialRate
+        expr: rate(rbac_denials_total{job="inspector-gadget-os"}[5m]) > 1
+        for: 3m
+        labels:
+          severity: warning
+          component: rbac
+        annotations:
+          summary: "High RBAC denial rate"
+          description: "RBAC denials: {{ $value }} denials/second - possible privilege escalation attempts"
+
+      - alert: PrivilegeEscalationAttempt
+        expr: |
+          increase(rbac_denials_total{job="inspector-gadget-os",action="admin"}[1m]) > 5 or
+          increase(rbac_denials_total{job="inspector-gadget-os",resource=~".*admin.*"}[1m]) > 3
+        for: 0s
+        labels:
+          severity: critical
+          component: rbac
+        annotations:
+          summary: "Potential privilege escalation attempt"
+          description: "Multiple admin permission denials detected for {{ $labels.user_id }}"
+
+  - name: filesystem.rules
+    rules:
+      # File system security alerts
+      - alert: PathTraversalAttempt
+        expr: increase(path_traversal_attempts_total{job="inspector-gadget-os"}[1m]) > 0
+        for: 0s
+        labels:
+          severity: critical
+          component: safefs
+        annotations:
+          summary: "Path traversal attempt detected"
+          description: "Path traversal attempt from {{ $labels.source_ip }} by {{ $labels.user_id }}"
+
+      - alert: SuspiciousFileAccess
+        expr: |
+          rate(safefs_operations_total{job="inspector-gadget-os",path=~".*(etc|root|ssh|key|secret).*"}[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+          component: safefs
+        annotations:
+          summary: "Suspicious file access pattern"
+          description: "High access rate to sensitive files: {{ $value }} operations/second"
+
+      - alert: FileOperationErrors
+        expr: rate(safefs_errors_total{job="inspector-gadget-os"}[5m]) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          component: safefs
+        annotations:
+          summary: "High file operation error rate"
+          description: "File operation errors: {{ $value }} errors/second"
+
+  - name: gadgets.rules
+    rules:
+      # Gadget execution alerts
+      - alert: GadgetExecutionFailures
+        expr: |
+          (
+            rate(gadget_executions_total{job="inspector-gadget-os",status="error"}[5m]) /
+            rate(gadget_executions_total{job="inspector-gadget-os"}[5m])
+          ) * 100 > 10
+        for: 3m
+        labels:
+          severity: warning
+          component: gadgets
+        annotations:
+          summary: "High gadget execution failure rate"
+          description: "Gadget {{ $labels.gadget_name }} failure rate: {{ $value }}%"
+
+      - alert: GadgetHanging
+        expr: |
+          histogram_quantile(0.95,
+            rate(gadget_execution_duration_seconds_bucket{job="inspector-gadget-os"}[5m])
+          ) > 300
+        for: 1m
+        labels:
+          severity: warning
+          component: gadgets
+        annotations:
+          summary: "Gadget execution hanging"
+          description: "Gadget {{ $labels.gadget_name }} 95th percentile duration: {{ $value }}s"
+
+      - alert: SecurityGadgetErrors
+        expr: |
+          rate(gadget_executions_total{job="inspector-gadget-os",category="security",status="error"}[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: critical
+          component: gadgets
+        annotations:
+          summary: "Security gadget execution errors"
+          description: "Security gadget {{ $labels.gadget_name }} errors: {{ $value }} errors/second"
+
+  - name: performance.rules
+    rules:
+      # Performance and resource alerts
+      - alert: HighMemoryUsage
+        expr: |
+          (process_resident_memory_bytes{job="inspector-gadget-os"} / (1024^3)) > 4
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage: {{ $value }}GB"
+
+      - alert: HighCPUUsage
+        expr: |
+          rate(process_cpu_seconds_total{job="inspector-gadget-os"}[5m]) * 100 > 80
+        for: 3m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage: {{ $value }}%"
+
+      - alert: DiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{job="node",mountpoint="/"} / node_filesystem_size_bytes{job="node",mountpoint="/"}) * 100 < 10
+        for: 1m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Low disk space"
+          description: "Available disk space: {{ $value }}%"
+
+      - alert: TooManyOpenFiles
+        expr: process_open_fds{job="inspector-gadget-os"} > 1000
+        for: 2m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "Too many open file descriptors"
+          description: "Open file descriptors: {{ $value }}"
+
+  - name: ai_llm.rules
+    rules:
+      # O-LLaMA and AI model alerts
+      - alert: LLMModelLoadFailure
+        expr: increase(ollama_model_load_failures_total{job="o-llama"}[5m]) > 0
+        for: 0s
+        labels:
+          severity: critical
+          component: ollama
+        annotations:
+          summary: "LLM model load failure"
+          description: "Failed to load model {{ $labels.model_name }}"
+
+      - alert: LLMHighResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            rate(ollama_inference_duration_seconds_bucket{job="o-llama"}[5m])
+          ) > 30
+        for: 2m
+        labels:
+          severity: warning
+          component: ollama
+        annotations:
+          summary: "High LLM inference time"
+          description: "LLM {{ $labels.model_name }} 95th percentile inference time: {{ $value }}s"
+
+      - alert: LLMMemoryExhaustion
+        expr: ollama_gpu_memory_used_bytes{job="o-llama"} / ollama_gpu_memory_total_bytes{job="o-llama"} > 0.95
+        for: 1m
+        labels:
+          severity: critical
+          component: ollama
+        annotations:
+          summary: "LLM GPU memory exhaustion"
+          description: "GPU memory usage: {{ $value }}%"
+
+  - name: security_monitoring.rules
+    rules:
+      # General security monitoring
+      - alert: SecurityEventsBurst
+        expr: |
+          (
+            rate(log_entries_total{job="inspector-gadget-os",level="error",component=~"auth|rbac|safefs"}[1m])
+          ) > 5
+        for: 30s
+        labels:
+          severity: critical
+          component: security
+        annotations:
+          summary: "Security events burst detected"
+          description: "High rate of security-related errors: {{ $value }} events/second"
+
+      - alert: UnauthorizedAPIAccess
+        expr: |
+          rate(http_requests_total{job="inspector-gadget-os",code="403"}[5m]) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "High rate of unauthorized API access"
+          description: "403 Forbidden responses: {{ $value }} responses/second"
+
+      - alert: AnomalousUserBehavior
+        expr: |
+          rate(user_actions_total{job="inspector-gadget-os"}[5m]) by (user_id) > 10
+        for: 3m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "Anomalous user behavior detected"
+          description: "User {{ $labels.user_id }} action rate: {{ $value }} actions/second"

@@ -1,0 +1,139 @@
+# Prometheus configuration for Inspector Gadget OS
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'inspector-gadget-os'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  - "alert_rules.yml"
+
+# Scrape configuration
+scrape_configs:
+  # Inspector Gadget OS main server
+  - job_name: 'inspector-gadget-os'
+    static_configs:
+      - targets: ['localhost:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    
+    # Relabel instances for better identification
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'inspector-gadget-main'
+
+  # O-LLaMA enhanced runtime
+  - job_name: 'o-llama'
+    static_configs:
+      - targets: ['localhost:11434']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 15s
+    
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'o-llama-runtime'
+
+  # Gadget Framework
+  - job_name: 'gadget-framework'
+    static_configs:
+      - targets: ['localhost:9091']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'gadget-framework'
+
+  # System metrics (node_exporter)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+    scrape_interval: 15s
+    
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'inspector-gadget-host'
+
+  # Container metrics (cAdvisor)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['localhost:8081']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'container-metrics'
+
+  # GPU metrics (nvidia-dcgm-exporter or similar)
+  - job_name: 'gpu'
+    static_configs:
+      - targets: ['localhost:9400']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    honor_labels: true
+    
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'gpu-metrics'
+
+  # Web UI metrics (optional)
+  - job_name: 'web-ui'
+    static_configs:
+      - targets: ['localhost:5173']
+    metrics_path: '/api/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'web-ui'
+
+  # MCP server metrics
+  - job_name: 'mcp-servers'
+    kubernetes_sd_configs:
+      - role: pod
+    
+    relabel_configs:
+      # Only scrape MCP server pods
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        action: keep
+        regex: mcp-server
+      
+      # Use pod name as instance
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: instance
+      
+      # Add MCP server type as label
+      - source_labels: [__meta_kubernetes_pod_label_mcp_type]
+        target_label: mcp_type
+
+# Remote write configuration (optional - for long-term storage)
+remote_write:
+  - url: "http://victoriametrics:8428/api/v1/write"
+    queue_config:
+      max_samples_per_send: 10000
+      batch_send_deadline: 5s
+
+# Remote read configuration (optional)
+remote_read:
+  - url: "http://victoriametrics:8428/api/v1/read"
+    read_recent: true

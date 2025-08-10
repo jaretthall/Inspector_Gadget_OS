@@ -2,6 +2,8 @@ module github.com/inspector-gadget-os/o-llama
 
 go 1.24.0
 
+toolchain go1.24.6
+
 require (
 	github.com/containerd/console v1.0.3
 	github.com/gin-gonic/gin v1.10.0
@@ -22,6 +24,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/mattn/go-runewidth v0.0.14
 	github.com/nlpodyssey/gopickle v0.3.0
+	github.com/ollama/ollama v0.11.4
 	github.com/pdevine/tensor v0.0.0-20240510204454-f88f4562727c
 	golang.org/x/image v0.22.0
 	golang.org/x/tools v0.30.0
@@ -38,7 +41,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/flatbuffers v24.3.25+incompatible // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect

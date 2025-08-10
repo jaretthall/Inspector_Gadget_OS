@@ -1,0 +1,20 @@
+# MCP Server Configurations for Inspector Gadget OS (Linux-first)
+mcp:
+  enabled: true
+  servers:
+    - name: filesystem
+      type: stdio
+      command: ["npx", "@modelcontextprotocol/server-filesystem"]
+      args: ["/tmp", "/home", "/workspace"]
+      enabled: true
+      timeout: 30s
+      environment:
+        MCP_LOG_LEVEL: "info"
+
+    - name: git
+      type: stdio
+      command: ["npx", "@modelcontextprotocol/server-git"]
+      args: ["/workspace"]
+      enabled: false
+      timeout: 30s
+

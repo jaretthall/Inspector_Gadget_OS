@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go:*)",
+      "Bash(mkdir:*)",
+      "Bash(tree:*)",
+      "Bash(git init:*)",
+      "Bash(git clone:*)",
+      "Bash(chmod:*)",
+      "Bash(git add:*)",
+      "Bash(rm:*)",
+      "Bash(git config:*)",
+      "Bash(sudo tar:*)",
+      "Bash(tar:*)",
+      "Bash(export PATH=$HOME/go-install/go/bin:$PATH)",
+      "Bash(/tmp/go/bin/go build:*)",
+      "Bash(timeout 30 go build .)",
+      "Bash(CGO_ENABLED=0 go build -x main.go)",
+      "Bash(docker build:*)",
+      "Bash(make:*)",
+      "Bash(docker:*)",
+      "Bash(nvidia-smi:*)",
+      "WebFetch(domain:modelcontextprotocol.io)",
+      "WebFetch(domain:modelcontextprotocol.info)",
+      "Bash(./go-go-gadget list)",
+      "Bash(curl:*)",
+      "Bash(where git)",
+      "Bash(git --version)",
+      "Bash(where go)",
+      "Bash(where docker)"
+    ],
+    "deny": []
+  }
+}
