@@ -1,0 +1,97 @@
+name: build-ailliance
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  go-build:
+    name: Go build & test (o-llama)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: Inspector_Gadget_OS/o-llama
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('Inspector_Gadget_OS/o-llama/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download deps
+        run: go mod download
+
+      - name: Build all packages
+        run: go build ./...
+
+      - name: Build integrated server
+        run: go build -o ../../dist/integrated-server ./cmd/integrated-server
+
+      - name: Run unit tests (no integration)
+        run: go test ./... -run '' -v
+
+      - name: Upload server artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: integrated-server
+          path: Inspector_Gadget_OS/dist/integrated-server
+          if-no-files-found: ignore
+
+  web-ui-build:
+    name: Web UI build
+    runs-on: ubuntu-latest
+    needs: go-build
+    if: ${{ hashFiles('Inspector_Gadget_OS/web-ui/package.json') != '' }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: Inspector_Gadget_OS/web-ui
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+          cache-dependency-path: Inspector_Gadget_OS/web-ui/package-lock.json
+
+      - name: Install deps
+        run: |
+          if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm i --no-audit --no-fund; fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload web-ui dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-ui-dist
+          path: Inspector_Gadget_OS/web-ui/dist
+          if-no-files-found: ignore
+
+
